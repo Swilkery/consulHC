@@ -117,6 +117,7 @@ function App() {
               onBack={handleBackToCalendar}
               onAddReservation={handleAddReservation}
               onReservationClick={handleReservationClick}
+             onReservationUpdate={handleUpdateReservation}
             />
           )
         )}
