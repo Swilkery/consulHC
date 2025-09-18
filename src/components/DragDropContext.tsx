@@ -6,6 +6,8 @@ interface DragDropContextType {
   setDraggedReservation: (reservation: Reservation | null) => void;
   isDragging: boolean;
   setIsDragging: (dragging: boolean) => void;
+  dragOffset: { x: number; y: number };
+  setDragOffset: (offset: { x: number; y: number }) => void;
 }
 
 const DragDropContext = createContext<DragDropContextType | undefined>(undefined);
@@ -13,13 +15,16 @@ const DragDropContext = createContext<DragDropContextType | undefined>(undefined
 export function DragDropProvider({ children }: { children: React.ReactNode }) {
   const [draggedReservation, setDraggedReservation] = useState<Reservation | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   return (
     <DragDropContext.Provider value={{
       draggedReservation,
       setDraggedReservation,
       isDragging,
-      setIsDragging
+      setIsDragging,
+      dragOffset,
+      setDragOffset
     }}>
       {children}
     </DragDropContext.Provider>

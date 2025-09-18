@@ -19,7 +19,17 @@
   cursor: crosshair;
 }
 
-/* Smooth transitions for drag feedback */
-.drag-feedback {
-  transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+/* Drag and drop styles */
+.drop-zone-highlight {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  border-width: 2px !important;
+}
+
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grabbing {
+  cursor: grabbing;
 }

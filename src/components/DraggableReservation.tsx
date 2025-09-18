@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { Reservation } from '../types';
 import { formatTime } from '../utils';
-import { useDragDrop } from './DragDropContext';
 
 interface DraggableReservationProps {
   reservation: Reservation;
@@ -16,46 +15,81 @@ export function DraggableReservation({
   onReservationClick,
   onReservationUpdate 
 }: DraggableReservationProps) {
-  const { setDraggedReservation, setIsDragging } = useDragDrop();
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const originalPosRef = useRef({ x: 0, y: 0 });
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-    setDraggedReservation(reservation);
-    setIsDragging(true);
+    e.stopPropagation();
+    
+    if (!dragRef.current) return;
+    
+    isDraggingRef.current = true;
+    const rect = dragRef.current.getBoundingClientRect();
+    
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    originalPosRef.current = { x: rect.left, y: rect.top };
+    
+    // Add visual feedback
+    dragRef.current.style.zIndex = '1000';
+    dragRef.current.style.opacity = '0.8';
+    dragRef.current.style.transform = 'scale(1.02)';
+    dragRef.current.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
+    dragRef.current.style.transition = 'none';
+    
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
 
     const handleMouseMove = (e: MouseEvent) => {
-      // Visual feedback during drag
-      const element = document.getElementById(`reservation-${reservation.id}`);
-      if (element) {
-        element.style.transform = `translate(${e.clientX - rect.left - dragOffset.x}px, ${e.clientY - rect.top - dragOffset.y}px)`;
-        element.style.zIndex = '1000';
-        element.style.opacity = '0.8';
+      if (!isDraggingRef.current || !dragRef.current) return;
+      
+      const deltaX = e.clientX - startPosRef.current.x;
+      const deltaY = e.clientY - startPosRef.current.y;
+      
+      dragRef.current.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.02)`;
+      
+      // Highlight drop zones
+      const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+      const timeSlot = elementBelow?.closest('[data-time-slot]');
+      
+      // Remove previous highlights
+      document.querySelectorAll('.drop-zone-highlight').forEach(el => {
+        el.classList.remove('drop-zone-highlight');
+      });
+      
+      // Add highlight to current drop zone
+      if (timeSlot) {
+        timeSlot.classList.add('drop-zone-highlight');
       }
     };
 
     const handleMouseUp = (e: MouseEvent) => {
-      setIsDragging(false);
-      setDraggedReservation(null);
+      if (!isDraggingRef.current || !dragRef.current) return;
+      
+      isDraggingRef.current = false;
       
       // Reset visual state
-      const element = document.getElementById(`reservation-${reservation.id}`);
-      if (element) {
-        element.style.transform = '';
-        element.style.zIndex = '';
-        element.style.opacity = '';
-      }
-
+      dragRef.current.style.zIndex = '';
+      dragRef.current.style.opacity = '';
+      dragRef.current.style.transform = '';
+      dragRef.current.style.boxShadow = '';
+      dragRef.current.style.transition = '';
+      
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      
+      // Remove all highlights
+      document.querySelectorAll('.drop-zone-highlight').forEach(el => {
+        el.classList.remove('drop-zone-highlight');
+      });
+      
       // Find drop target
-      const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
-      const timeSlot = dropTarget?.closest('[data-time-slot]');
-      const roomSchedule = dropTarget?.closest('[data-room-id]');
-
+      const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+      const timeSlot = elementBelow?.closest('[data-time-slot]');
+      const roomSchedule = elementBelow?.closest('[data-room-id]');
+      
       if (timeSlot && roomSchedule) {
         const newTime = timeSlot.getAttribute('data-time-slot');
         const newRoomId = roomSchedule.getAttribute('data-room-id');
@@ -84,26 +118,27 @@ export function DraggableReservation({
           }
         }
       }
-
+      
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [reservation, onReservationUpdate]);
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (isDraggingRef.current) return;
     e.stopPropagation();
     onReservationClick(reservation);
-  };
+  }, [reservation, onReservationClick]);
 
   return (
     <div
-      id={`reservation-${reservation.id}`}
+      ref={dragRef}
       className="absolute left-0 right-0 rounded-lg p-2 text-left text-white text-xs font-medium 
-                 hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200
-                 border-l-4 border-white/30 cursor-move select-none"
+                 hover:shadow-lg cursor-grab active:cursor-grabbing
+                 border-l-4 border-white/30 select-none transition-all duration-200"
       style={{
         backgroundColor: reservation.color,
         ...style,
@@ -111,7 +146,6 @@ export function DraggableReservation({
       }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
-      draggable={false}
     >
       <div className="font-semibold truncate">{reservation.doctorName}</div>
       <div className="opacity-90 text-xs">
