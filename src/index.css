@@ -2,3 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Disable text selection during drag operations */
+.select-none {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Custom cursor styles */
+.cursor-move {
+  cursor: move;
+}
+
+.cursor-crosshair {
+  cursor: crosshair;
+}
+
+/* Smooth transitions for drag feedback */
+.drag-feedback {
+  transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+}

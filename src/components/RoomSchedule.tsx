@@ -1,16 +1,27 @@
 import React from 'react';
 import { Room, Reservation } from '../types';
 import { getReservationsForRoom, formatTime } from '../utils';
+import { DraggableReservation } from './DraggableReservation';
+import { TimeSlot } from './TimeSlot';
+import { useDragDrop } from './DragDropContext';
 
 interface RoomScheduleProps {
   room: Room;
   date: Date;
   reservations: Reservation[];
   onReservationClick: (reservation: Reservation) => void;
+  onReservationUpdate: (reservation: Reservation) => void;
 }
 
-export function RoomSchedule({ room, date, reservations, onReservationClick }: RoomScheduleProps) {
+export function RoomSchedule({ 
+  room, 
+  date, 
+  reservations, 
+  onReservationClick,
+  onReservationUpdate 
+}: RoomScheduleProps) {
   const roomReservations = getReservationsForRoom(reservations, room.id, date);
+  const { isDragging } = useDragDrop();
 
   const getTimeSlotHeight = (startTime: string, endTime: string): number => {
     const start = parseInt(startTime.split(':')[0]);
@@ -33,6 +44,20 @@ export function RoomSchedule({ room, date, reservations, onReservationClick }: R
     return Math.max(0, (totalMinutes - startMinutes) / 15 * 10); // 10px per 15 minutes
   };
 
+  // Generate time slots every 15 minutes from 6 AM to 10 PM
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 6; hour <= 22; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push(time);
+      }
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
   // Generate hour markers from 6 AM to 10 PM
   const hourMarkers = [];
   for (let hour = 6; hour <= 22; hour++) {
@@ -40,7 +65,12 @@ export function RoomSchedule({ room, date, reservations, onReservationClick }: R
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 min-h-[600px]">
+    <div 
+      className={`bg-white rounded-lg shadow-md p-4 min-h-[600px] transition-all duration-200 ${
+        isDragging ? 'ring-2 ring-blue-200' : ''
+      }`}
+      data-room-id={room.id}
+    >
       <div 
         className="flex items-center mb-4 pb-3 border-b-2"
         style={{ borderColor: room.color }}
@@ -69,28 +99,23 @@ export function RoomSchedule({ room, date, reservations, onReservationClick }: R
 
         {/* Reservations */}
         <div className="ml-16 relative" style={{ height: '680px' }}>
+          {/* Time slots for drop targets */}
+          {timeSlots.map((time) => (
+            <TimeSlot key={time} time={time} roomId={room.id} />
+          ))}
+
+          {/* Reservations */}
           {roomReservations.map((reservation) => (
-            <button
+            <DraggableReservation
               key={reservation.id}
-              onClick={() => onReservationClick(reservation)}
-              className="absolute left-0 right-0 rounded-lg p-2 text-left text-white text-xs font-medium 
-                         hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200
-                         border-l-4 border-white/30"
+              reservation={reservation}
+              onReservationClick={onReservationClick}
+              onReservationUpdate={onReservationUpdate}
               style={{
-                backgroundColor: reservation.color || room.color,
                 top: `${getTimeSlotPosition(reservation.startTime)}px`,
-                height: `${getTimeSlotHeight(reservation.startTime, reservation.endTime)}px`,
-                minHeight: '40px'
+                height: `${getTimeSlotHeight(reservation.startTime, reservation.endTime)}px`
               }}
-            >
-              <div className="font-semibold truncate">{reservation.doctorName}</div>
-              <div className="opacity-90 text-xs">
-                {formatTime(reservation.startTime)} - {formatTime(reservation.endTime)}
-              </div>
-              {reservation.isRecurring && (
-                <div className="opacity-75 text-xs mt-1">🔄 Recurrente</div>
-              )}
-            </button>
+            />
           ))}
           
           {roomReservations.length === 0 && (

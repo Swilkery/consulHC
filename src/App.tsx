@@ -60,6 +60,11 @@ function App() {
     }
   };
 
+  const handleUpdateReservation = (reservation: Reservation) => {
+    const { id, ...reservationData } = reservation;
+    updateReservation(id, reservationData);
+  };
+
   const handleDeleteReservation = deleteReservation;
 
   const handleCloseModal = () => {
@@ -102,6 +107,7 @@ function App() {
             selectedDate={selectedDate}
             onMonthChange={handleMonthChange}
             onDateSelect={handleDateSelect}
+            onReservationUpdate={handleUpdateReservation}
           />
         ) : (
           selectedDate && (
